@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Dompet &amp; Catatan Harian</string>
+    <string name="nav_dashboard">Beranda</string>
+    <string name="nav_finance">Keuangan</string>
+    <string name="nav_notes">Catatan</string>
+    <string name="nav_stats">Statistik</string>
+</resources>

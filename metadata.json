@@ -1,0 +1,6 @@
+{
+  "name": "Dompet & Catatan Harian",
+  "description": "Aplikasi lengkap untuk mencatat pengeluaran keuangan dan catatan harian dalam satu tempat dengan penyimpanan offline yang aman.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
