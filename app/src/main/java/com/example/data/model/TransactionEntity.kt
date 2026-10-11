@@ -20,6 +20,8 @@ data class TransactionEntity(
     val category: String,
     val paymentMethod: String,
     val note: String = "",
+    val pocketId: Long = 0L,
+    val subItemsJson: String = "",
     val dateMillis: Long = System.currentTimeMillis()
 )
 

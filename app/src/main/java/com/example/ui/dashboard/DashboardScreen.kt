@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -48,10 +49,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.NoteEntity
+import com.example.data.model.PocketType
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionType
 import com.example.ui.components.BalanceCard
@@ -79,6 +82,8 @@ fun DashboardScreen(
     val summary by viewModel.financeSummary.collectAsStateWithLifecycle()
     val transactions by viewModel.transactions.collectAsStateWithLifecycle()
     val notes by viewModel.notes.collectAsStateWithLifecycle()
+    val pockets by viewModel.pockets.collectAsStateWithLifecycle()
+    val currency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showAddExpenseDialog by remember { mutableStateOf(false) }
@@ -160,14 +165,77 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(14.dp))
         }
 
-        // Clean Balance Card
+        // Clean Balance Card with Today & Monthly Breakdown
         item {
             BalanceCard(
                 balance = summary.balance,
                 totalIncome = summary.totalIncome,
-                totalExpense = summary.totalExpense
+                totalExpense = summary.totalExpense,
+                todayExpense = summary.todayExpense,
+                monthlyExpense = summary.monthlyExpense,
+                currency = currency
             )
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Sub-Alokasi Dana Quick Summary Card
+        item {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToTab(AppScreen.POCKETS) }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Savings,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Sub-Alokasi & Kantong Dana",
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = if (pockets.isEmpty()) "Pisahkan uang belanja & tabungan" else "${pockets.size} kantong aktif",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Buka Kantong",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(14.dp))
         }
 
         // Modern Minimalist Quick Actions
@@ -308,8 +376,12 @@ fun DashboardScreen(
             }
         } else {
             items(recentTransactions, key = { "${it.id}_${it.dateMillis}" }) { tx ->
+                val pocket = pockets.find { it.id == tx.pocketId }
                 TransactionItemCard(
                     transaction = tx,
+                    currency = currency,
+                    pocketName = pocket?.name,
+                    pocketEmoji = pocket?.emoji ?: "👛",
                     onEdit = { transactionToEdit = tx },
                     onDelete = { transactionToDelete = tx }
                 )
@@ -459,6 +531,8 @@ fun DashboardScreen(
     if (showAddExpenseDialog) {
         AddEditTransactionDialog(
             defaultType = TransactionType.EXPENSE,
+            pockets = pockets,
+            currency = currency,
             onDismiss = { showAddExpenseDialog = false },
             onSave = {
                 viewModel.addTransaction(it)
@@ -470,6 +544,8 @@ fun DashboardScreen(
     if (showAddIncomeDialog) {
         AddEditTransactionDialog(
             defaultType = TransactionType.INCOME,
+            pockets = pockets,
+            currency = currency,
             onDismiss = { showAddIncomeDialog = false },
             onSave = {
                 viewModel.addTransaction(it)
@@ -491,6 +567,8 @@ fun DashboardScreen(
     if (transactionToEdit != null) {
         AddEditTransactionDialog(
             initialTransaction = transactionToEdit,
+            pockets = pockets,
+            currency = currency,
             onDismiss = { transactionToEdit = null },
             onSave = {
                 viewModel.updateTransaction(it)

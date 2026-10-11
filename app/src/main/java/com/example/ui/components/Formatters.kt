@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import com.example.data.model.CurrencyType
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -9,18 +10,26 @@ import java.util.Locale
 object Formatters {
     private val localeId = Locale("id", "ID")
 
-    fun formatRupiah(amount: Long): String {
+    fun formatCurrency(amount: Long, currency: CurrencyType = CurrencyType.IDR): String {
         return try {
             val nf = NumberFormat.getNumberInstance(localeId)
-            "Rp " + nf.format(amount)
+            "${currency.symbol} " + nf.format(amount)
         } catch (e: Exception) {
-            "Rp $amount"
+            "${currency.symbol} $amount"
         }
     }
 
-    fun formatSignedRupiah(amount: Long, isExpense: Boolean): String {
-        val formatted = formatRupiah(amount)
+    fun formatRupiah(amount: Long): String {
+        return formatCurrency(amount, CurrencyType.IDR)
+    }
+
+    fun formatSignedCurrency(amount: Long, isExpense: Boolean, currency: CurrencyType = CurrencyType.IDR): String {
+        val formatted = formatCurrency(amount, currency)
         return if (isExpense) "-$formatted" else "+$formatted"
+    }
+
+    fun formatSignedRupiah(amount: Long, isExpense: Boolean): String {
+        return formatSignedCurrency(amount, isExpense, CurrencyType.IDR)
     }
 
     fun formatDate(millis: Long): String {
@@ -84,6 +93,17 @@ object Formatters {
             val cal2 = Calendar.getInstance().apply { timeInMillis = millis2 }
             cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                     cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    fun isSameMonth(millis1: Long, millis2: Long): Boolean {
+        return try {
+            val cal1 = Calendar.getInstance().apply { timeInMillis = millis1 }
+            val cal2 = Calendar.getInstance().apply { timeInMillis = millis2 }
+            cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                    cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH)
         } catch (e: Exception) {
             false
         }

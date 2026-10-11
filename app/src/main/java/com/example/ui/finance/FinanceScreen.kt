@@ -1,5 +1,6 @@
 package com.example.ui.finance
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,7 +45,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -50,8 +52,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.CurrencyType
 import com.example.data.model.ExpenseCategories
 import com.example.data.model.IncomeCategories
+import com.example.data.model.PocketEntity
+import com.example.data.model.SubItemParser
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionType
 import com.example.ui.components.AppSearchBar
@@ -74,6 +79,9 @@ fun FinanceScreen(
     val summary by viewModel.financeSummary.collectAsStateWithLifecycle()
     val searchQuery by viewModel.financeSearchQuery.collectAsStateWithLifecycle()
     val selectedType by viewModel.selectedTypeFilter.collectAsStateWithLifecycle()
+    val selectedCategory by viewModel.selectedCategoryFilter.collectAsStateWithLifecycle()
+    val currency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
+    val pockets by viewModel.pockets.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var transactionToEdit by remember { mutableStateOf<TransactionEntity?>(null) }
@@ -86,12 +94,15 @@ fun FinanceScreen(
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
         ) {
-            // Balance Card
+            // Balance Card with Today & Monthly Breakdown
             item {
                 BalanceCard(
                     balance = summary.balance,
                     totalIncome = summary.totalIncome,
-                    totalExpense = summary.totalExpense
+                    totalExpense = summary.totalExpense,
+                    todayExpense = summary.todayExpense,
+                    monthlyExpense = summary.monthlyExpense,
+                    currency = currency
                 )
                 Spacer(modifier = Modifier.height(14.dp))
             }
@@ -165,11 +176,35 @@ fun FinanceScreen(
                             modifier = Modifier.testTag("filter_income_transactions")
                         )
                     }
+
+                    // Category filters
+                    val categoriesToDisplay = if (selectedType == TransactionType.INCOME) IncomeCategories else ExpenseCategories
+                    items(categoriesToDisplay) { (cat, emoji) ->
+                        val isSelected = selectedCategory == cat
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                viewModel.setCategoryFilter(if (isSelected) null else cat)
+                            },
+                            label = { Text("$emoji $cat", fontSize = 12.sp) },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                borderColor = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier.testTag("filter_cat_$cat")
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(14.dp))
             }
 
-            // Transaction Header & Counter
+            // Transactions Header Count
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -177,11 +212,11 @@ fun FinanceScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Riwayat Catatan",
+                        text = "Daftar Transaksi",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        text = "${transactions.size} item",
+                        text = "${transactions.size} transaksi",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -189,14 +224,14 @@ fun FinanceScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // List of Transactions
+            // Transaction Cards List
             if (transactions.isEmpty()) {
                 item {
                     EmptyStateCard(
-                        emoji = "💳",
-                        title = "Belum Ada Catatan Uang",
+                        emoji = if (searchQuery.isNotEmpty()) "🔍" else "💸",
+                        title = if (searchQuery.isNotEmpty()) "Tidak ada hasil" else "Belum ada transaksi",
                         message = if (searchQuery.isNotEmpty()) {
-                            "Tidak ada transaksi ditemukan untuk \"$searchQuery\"."
+                            "Tidak ditemukan transaksi dengan kata kunci \"$searchQuery\"."
                         } else {
                             "Tekan tombol (+) untuk mencatat pengeluaran atau pemasukan."
                         }
@@ -204,8 +239,12 @@ fun FinanceScreen(
                 }
             } else {
                 items(transactions, key = { "${it.id}_${it.dateMillis}" }) { tx ->
+                    val pocket = pockets.find { it.id == tx.pocketId }
                     TransactionItemCard(
                         transaction = tx,
+                        currency = currency,
+                        pocketName = pocket?.name,
+                        pocketEmoji = pocket?.emoji ?: "👛",
                         onEdit = { transactionToEdit = tx },
                         onDelete = { transactionToDelete = tx }
                     )
@@ -233,6 +272,8 @@ fun FinanceScreen(
     if (showAddDialog) {
         AddEditTransactionDialog(
             defaultType = TransactionType.EXPENSE,
+            pockets = pockets,
+            currency = currency,
             onDismiss = { showAddDialog = false },
             onSave = { newTx ->
                 viewModel.addTransaction(newTx)
@@ -245,6 +286,8 @@ fun FinanceScreen(
     if (transactionToEdit != null) {
         AddEditTransactionDialog(
             initialTransaction = transactionToEdit,
+            pockets = pockets,
+            currency = currency,
             onDismiss = { transactionToEdit = null },
             onSave = { updatedTx ->
                 viewModel.updateTransaction(updatedTx)
@@ -258,7 +301,7 @@ fun FinanceScreen(
         val tx = transactionToDelete!!
         ConfirmDeleteDialog(
             title = "Hapus Transaksi?",
-            message = "Apakah Anda yakin ingin menghapus \"${tx.title}\" sebesar ${Formatters.formatRupiah(tx.amount)}?",
+            message = "Apakah Anda yakin ingin menghapus \"${tx.title}\" sebesar ${Formatters.formatCurrency(tx.amount, currency)}?",
             onConfirm = {
                 viewModel.deleteTransaction(tx)
                 transactionToDelete = null
@@ -271,16 +314,24 @@ fun FinanceScreen(
 @Composable
 fun TransactionItemCard(
     transaction: TransactionEntity,
+    currency: CurrencyType = CurrencyType.IDR,
+    pocketName: String? = null,
+    pocketEmoji: String = "👛",
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isExpense = transaction.type == TransactionType.EXPENSE
     var showMenu by remember { mutableStateOf(false) }
+    var expandedSubItems by remember { mutableStateOf(false) }
 
     val emoji = remember(transaction.category, transaction.type) {
         val list = if (isExpense) ExpenseCategories else IncomeCategories
         list.find { it.first == transaction.category }?.second ?: if (isExpense) "💸" else "💰"
+    }
+
+    val subItems = remember(transaction.subItemsJson) {
+        SubItemParser.parse(transaction.subItemsJson)
     }
 
     Card(
@@ -348,7 +399,7 @@ fun TransactionItemCard(
 
                 // Amount
                 Text(
-                    text = Formatters.formatSignedRupiah(transaction.amount, isExpense),
+                    text = Formatters.formatSignedCurrency(transaction.amount, isExpense, currency),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.3).sp
@@ -399,6 +450,80 @@ fun TransactionItemCard(
                                 onDelete()
                             }
                         )
+                    }
+                }
+            }
+
+            // Sub-Alokasi Badge (if assigned to a pocket)
+            if (!pocketName.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                ) {
+                    Text(
+                        text = "$pocketEmoji $pocketName",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            // Multi-Item Grouped Expense Breakdown Preview
+            if (subItems.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expandedSubItems = !expandedSubItems }
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📦 ${subItems.size} Rincian Item Pengeluaran",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(
+                                imageVector = if (expandedSubItems) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        AnimatedVisibility(visible = expandedSubItems) {
+                            Column(
+                                modifier = Modifier.padding(top = 6.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                subItems.forEachIndexed { i, sub ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "• ${sub.name}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = Formatters.formatCurrency(sub.amount, currency),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                            color = ExpenseRed
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

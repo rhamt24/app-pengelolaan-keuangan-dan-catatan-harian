@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -33,12 +34,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.data.model.AppThemeMode
 import com.example.ui.dashboard.DashboardScreen
 import com.example.ui.finance.FinanceScreen
 import com.example.ui.navigation.AppScreen
 import com.example.ui.notes.NotesScreen
-import com.example.ui.stats.StatsScreen
+import com.example.ui.pockets.PocketsScreen
+import com.example.ui.settings.SettingsScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.AppViewModel
 
@@ -47,8 +51,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
-                MainApp()
+            val viewModel: AppViewModel = viewModel()
+            val themeMode by viewModel.selectedThemeMode.collectAsStateWithLifecycle()
+            val systemIsDark = isSystemInDarkTheme()
+            val isDarkTheme = when (themeMode) {
+                AppThemeMode.LIGHT -> false
+                AppThemeMode.DARK -> true
+                AppThemeMode.SYSTEM -> systemIsDark
+            }
+
+            MyApplicationTheme(darkTheme = isDarkTheme) {
+                MainApp(viewModel = viewModel)
             }
         }
     }
@@ -144,7 +157,7 @@ fun MainApp(
                                     Text(
                                         text = screen.title,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        fontSize = 11.sp
+                                        fontSize = 10.sp
                                     )
                                 },
                                 colors = NavigationBarItemDefaults.colors(
@@ -188,10 +201,13 @@ fun ScreenContent(
         AppScreen.FINANCE -> FinanceScreen(
             viewModel = viewModel
         )
+        AppScreen.POCKETS -> PocketsScreen(
+            viewModel = viewModel
+        )
         AppScreen.NOTES -> NotesScreen(
             viewModel = viewModel
         )
-        AppScreen.STATS -> StatsScreen(
+        AppScreen.SETTINGS -> SettingsScreen(
             viewModel = viewModel
         )
     }

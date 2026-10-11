@@ -107,6 +107,9 @@ fun BalanceCard(
     balance: Long,
     totalIncome: Long,
     totalExpense: Long,
+    todayExpense: Long = 0L,
+    monthlyExpense: Long = 0L,
+    currency: com.example.data.model.CurrencyType = com.example.data.model.CurrencyType.IDR,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -126,7 +129,7 @@ fun BalanceCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(22.dp)
+                .padding(20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -153,10 +156,10 @@ fun BalanceCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = Formatters.formatRupiah(balance),
+                text = Formatters.formatCurrency(balance, currency),
                 style = MaterialTheme.typography.headlineLarge.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.5).sp
@@ -164,27 +167,27 @@ fun BalanceCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Income Minimalist Box
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalArrangement = Arrangement.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(22.dp)
                                     .clip(CircleShape)
                                     .background(IncomeGreenContainer),
                                 contentAlignment = Alignment.Center
@@ -193,7 +196,7 @@ fun BalanceCard(
                                     imageVector = Icons.Default.ArrowDownward,
                                     contentDescription = "Pemasukan",
                                     tint = IncomeGreen,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(6.dp))
@@ -205,9 +208,9 @@ fun BalanceCard(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = Formatters.formatRupiah(totalIncome),
+                            text = Formatters.formatCurrency(totalIncome, currency),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = (-0.3).sp
@@ -221,19 +224,19 @@ fun BalanceCard(
 
                 // Expense Minimalist Box
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalArrangement = Arrangement.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(22.dp)
                                     .clip(CircleShape)
                                     .background(ExpenseRedContainer),
                                 contentAlignment = Alignment.Center
@@ -242,7 +245,7 @@ fun BalanceCard(
                                     imageVector = Icons.Default.ArrowUpward,
                                     contentDescription = "Pengeluaran",
                                     tint = ExpenseRed,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(6.dp))
@@ -254,9 +257,9 @@ fun BalanceCard(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = Formatters.formatRupiah(totalExpense),
+                            text = Formatters.formatCurrency(totalExpense, currency),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = (-0.3).sp
@@ -264,6 +267,58 @@ fun BalanceCard(
                             color = ExpenseRed,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            // Sub-Breakdown for Today & Monthly Expense
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Today Expense
+                    Column {
+                        Text(
+                            text = "Hari Ini",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = Formatters.formatCurrency(todayExpense, currency),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (todayExpense > 0) ExpenseRed else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(28.dp)
+                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    )
+
+                    // Monthly Expense
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Bulan Ini",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = Formatters.formatCurrency(monthlyExpense, currency),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (monthlyExpense > 0) ExpenseRed else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

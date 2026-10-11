@@ -6,17 +6,19 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.data.model.NoteEntity
+import com.example.data.model.PocketEntity
 import com.example.data.model.TransactionEntity
 
 @Database(
-    entities = [TransactionEntity::class, NoteEntity::class],
-    version = 1,
+    entities = [TransactionEntity::class, NoteEntity::class, PocketEntity::class],
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun noteDao(): NoteDao
+    abstract fun pocketDao(): PocketDao
 
     companion object {
         @Volatile
